@@ -1,0 +1,120 @@
+DAY 2 — CLIENT-SERVER ARCHITECTURE, DATA MODELS & INSTALLATION
+
+Client-Server Architecture
+
+Client-server architecture is a model in which a client sends a request
+and a server processes the request and returns a response.
+
+Schematic
+
+    CLIENT
+      |
+      | Request
+      v
+    SERVER
+      |
+      +--> Validate
+      +--> Process
+      +--> Database
+      |
+      | Response
+      v
+    CLIENT
+
+Client responsibilities
+
+-   Sends requests to the server.
+-   Receives responses from the server.
+
+Server responsibilities
+
+-   Receives requests.
+-   Validates requests.
+-   Processes business logic.
+-   Communicates with the database.
+-   Generates and sends responses.
+
+Data Models
+
+Hierarchical model: Organizes data in a tree structure.
+
+Network model: Represents data using records connected through
+relationships.
+
+Relational model: Organizes data into tables consisting of rows and
+columns. SQL databases such as MySQL use the relational model.
+
+Object-oriented model: Represents data as objects and their
+relationships.
+
+MySQL installation and command-line connection
+
+The source demonstrates using the MySQL command-line client. A typical
+connection pattern is:
+
+    mysql -u username -p
+
+After connecting, select a database:
+
+    USE database_name;
+
+Check databases:
+
+    SHOW DATABASES;
+
+Interview practice Q&A
+
+Q1. What is client-server architecture?
+Answer: It is an architecture where the client requests a service/data
+and the server processes the request and returns the response.
+
+Q2. What is a database server?
+Answer: A server process that manages database connections, queries,
+data storage and database operations.
+
+Q3. What is a relational data model?
+Answer: A model that represents data as related tables of rows and
+columns.
+
+Q4. How do you connect to MySQL from the command line?
+Answer: mysql -u username -p and then provide the password.
+
+
+Client-Server Architecture:
+
+                          CLIENT–SERVER ARCHITECTURE
+                                      |
+                    +-----------------+-----------------+
+                    |                                   |
+                    |                                   |
+                 CLIENT                              SERVER
+                    |                                   |
+    ┌───────────────┴───────────────┐   ┌───────────────┴────────────────┐
+    │                               │   │                                │
+    │ • Sends requests to Server    │   │ • Takes requests from Clients  │
+    │                               │   │                                │
+    │ • Receives response from      │   │ • Checks whether request is    │
+    │   Server                      │   │   valid                        │
+    │                               │   │                                │
+    └───────────────────────────────┘   │ • Valid request → Generates    │
+                    │                   │   response and sends it to     │
+                    │                   │   Client                       │
+                    │                   │                                │
+                    │                   │ • Invalid request → Raises     │
+                    │                   │   an error                     │
+                    │                   └────────────────────────────────┘
+                    │                                   ▲
+                    │                                   │
+                    │       REQUEST                     │
+                    ├──────────────────────────────────►│
+                    │                                   │
+                    │       RESPONSE                    │
+                    │◄──────────────────────────────────┤
+                    │                                   │
+                    └──────────── PROTOCOL ─────────────┘
+                              (Set of Rules)
+                Controls communication between Client and Server
+
+Client → Request → Protocol → Server → Response/Error → Client.
+
+
