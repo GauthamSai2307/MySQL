@@ -1,0 +1,522 @@
+DAY 17 — TRIGGERS
+
+Trigger definition
+
+A trigger is a database program that automatically executes in response
+to a specified event on a table, such as INSERT, UPDATE or DELETE.
+
+Trigger syntax
+
+    DELIMITER //
+
+    CREATE TRIGGER trigger_name
+    BEFORE INSERT ON table_name
+    FOR EACH ROW
+    BEGIN
+        -- statements
+    END //
+
+    DELIMITER ;
+
+BEFORE INSERT example from the source
+
+    DELIMITER //
+
+    CREATE TRIGGER before_in_salary
+    BEFORE INSERT ON employees
+    FOR EACH ROW
+    BEGIN
+        IF NEW.salary < 20000 THEN
+            SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Salary can not be less than 20000';
+        END IF;
+    END //
+
+    DELIMITER ;
+
+NEW and OLD
+
+For row-level triggers: - NEW.column refers to the new row value. -
+OLD.column refers to the existing/old row value.
+
+Typical availability: - INSERT: NEW - UPDATE: OLD and NEW - DELETE: OLD
+
+BEFORE UPDATE example
+
+The source prevents reducing salary:
+
+    DELIMITER //
+
+    CREATE TRIGGER before_salupdate
+    BEFORE UPDATE ON employees
+    FOR EACH ROW
+    BEGIN
+        IF NEW.salary < OLD.salary THEN
+            SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Salary cannot be reduced';
+        END IF;
+    END //
+
+    DELIMITER ;
+
+BEFORE DELETE example
+
+The source prevents deletion of IT employees:
+
+    DELIMITER //
+
+    CREATE TRIGGER before_delete
+    BEFORE DELETE ON employees
+    FOR EACH ROW
+    BEGIN
+        IF OLD.department = 'IT' THEN
+            SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'We can''t delete records if the department is IT';
+        END IF;
+    END //
+
+    DELIMITER ;
+
+Audit trigger concept
+
+The source also creates an Employee_Audit table with fields such as
+audit ID, employee ID, action type, old salary, new salary and action
+time. This supports an audit-log pattern for INSERT/UPDATE/DELETE
+operations.
+
+Schematic
+
+    DML EVENT
+     INSERT / UPDATE / DELETE
+              |
+              v
+           TRIGGER
+              |
+        +-----+-----+
+        |           |
+     BEFORE       AFTER
+
+Interview practice Q&A
+
+Q1. What is a trigger?
+Answer: A trigger automatically executes when a specified INSERT, UPDATE
+or DELETE event occurs on a table.
+
+Q2. What is BEFORE INSERT?
+Answer: A trigger that executes before a new row is inserted.
+
+Q3. What are OLD and NEW?
+Answer: OLD represents the previous row value and NEW represents the
+incoming/new row value where supported.
+
+Q4. Prevent salary below 20,000.
+Answer: Use a BEFORE INSERT trigger with
+IF NEW.salary < 20000 THEN SIGNAL SQLSTATE ....
+
+Q5. Prevent salary reduction.
+Answer: Use a BEFORE UPDATE trigger comparing NEW.salary with
+OLD.salary.
+
+Q6. What is an audit trigger?
+Answer: A trigger that records data-change events in an audit table.
+
+Practiced material from Day 17
+
+mysql> use company_db;
+ERROR 1049 (42000): Unknown database 'company_db'
+mysql> use companydb;
+Database changed
+mysql> show tables;
++---------------------+
+| Tables_in_companydb |
++---------------------+
+| employees           |
++---------------------+
+1 row in set (0.11 sec)
+
+mysql> select * from employees;
++--------+----------+------------+----------+------------+------------+------+
+| emp_id | emp_name | department | salary   | experience | city       | age  |
++--------+----------+------------+----------+------------+------------+------+
+|    101 | Ravi     | IT         | 45000.00 |          2 | Hyderabad  |   24 |
+|    102 | Kiran    | HR         | 40000.00 |          3 | Vijayawada |   27 |
+|    103 | Suresh   | IT         | 55000.00 |          5 | Hyderabad  |   30 |
+|    104 | Anil     | Sales      | 35000.00 |          1 | Chennai    |   23 |
+|    105 | Priya    | Finance    | 60000.00 |          6 | Bangalore  |   32 |
+|    106 | Sneha    | IT         | 50000.00 |          4 | Vizag      |   28 |
+|    107 | Rahul    | HR         | 42000.00 |          2 | Hyderabad  |   25 |
+|    108 | Arjun    | Sales      | 38000.00 |          3 | Chennai    |   26 |
+|    109 | Divya    | Finance    | 65000.00 |          7 | Bangalore  |   34 |
+|    110 | Manoj    | IT         | 70000.00 |          8 | Hyderabad  |   35 |
++--------+----------+------------+----------+------------+------------+------+
+10 rows in set (0.07 sec)
+
+mysql> delimiter //
+mysql> create trigger before_in_salary
+    -> before insert
+    -> on employees
+    -> begin
+    ->     if new.salary < 20000 then
+    ->     signal sqlstate '45000'
+    ->     set message_text = 'Salary can not be less than 20000';
+    ->     end if;
+    -> end //
+ERROR 1064 (42000): You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'begin
+    if new.salary < 20000 then
+    signal sqlstate '45000'
+    set message' at line 4
+mysql> DELIMITER //
+mysql>
+mysql> CREATE TRIGGER before_in_salary
+    -> BEFORE INSERT ON employees
+    -> FOR EACH ROW
+    -> BEGIN
+    ->     IF NEW.salary < 20000 THEN
+    ->         SIGNAL SQLSTATE '45000'
+    ->         SET MESSAGE_TEXT = 'Salary can not be less than 20000';
+    ->     END IF;
+    -> END //
+Query OK, 0 rows affected (0.08 sec)
+
+mysql>
+mysql> DELIMITER ;
+mysql> insert into employees values(111,'Gautham','IT',19500,1,'Visakhapatnam');
+ERROR 1136 (21S01): Column count doesn't match value count at row 1
+mysql> insert into employees values(111,'Gautham','IT',19500,1,'Visakhapatnam',22);
+ERROR 1644 (45000): Salary can not be less than 20000
+mysql> insert into employees values(111,'Gautham','IT',59500,1,'Visakhapatnam',22);
+Query OK, 1 row affected (0.06 sec)
+
+mysql> select * from employees;
++--------+----------+------------+----------+------------+---------------+------+
+| emp_id | emp_name | department | salary   | experience | city          | age  |
++--------+----------+------------+----------+------------+---------------+------+
+|    101 | Ravi     | IT         | 45000.00 |          2 | Hyderabad     |   24 |
+|    102 | Kiran    | HR         | 40000.00 |          3 | Vijayawada    |   27 |
+|    103 | Suresh   | IT         | 55000.00 |          5 | Hyderabad     |   30 |
+|    104 | Anil     | Sales      | 35000.00 |          1 | Chennai       |   23 |
+|    105 | Priya    | Finance    | 60000.00 |          6 | Bangalore     |   32 |
+|    106 | Sneha    | IT         | 50000.00 |          4 | Vizag         |   28 |
+|    107 | Rahul    | HR         | 42000.00 |          2 | Hyderabad     |   25 |
+|    108 | Arjun    | Sales      | 38000.00 |          3 | Chennai       |   26 |
+|    109 | Divya    | Finance    | 65000.00 |          7 | Bangalore     |   34 |
+|    110 | Manoj    | IT         | 70000.00 |          8 | Hyderabad     |   35 |
+|    111 | Gautham  | IT         | 59500.00 |          1 | Visakhapatnam |   22 |
++--------+----------+------------+----------+------------+---------------+------+
+11 rows in set (0.00 sec)
+
+mysql> delimiter //
+mysql> create trigger uppercase_beforein
+    -> before insert on employees
+    -> for each row
+    -> begin
+    ->     set new.emp_name = upper(new.emp_name);
+    -> end //
+Query OK, 0 rows affected (0.04 sec)
+
+mysql> delimiter ;
+mysql> insert into employees values(112,'shalini','HR',39500,1,'Hyderabad',22);
+Query OK, 1 row affected (0.06 sec)
+
+mysql> select * from employees;
++--------+----------+------------+----------+------------+---------------+------+
+| emp_id | emp_name | department | salary   | experience | city          | age  |
++--------+----------+------------+----------+------------+---------------+------+
+|    101 | Ravi     | IT         | 45000.00 |          2 | Hyderabad     |   24 |
+|    102 | Kiran    | HR         | 40000.00 |          3 | Vijayawada    |   27 |
+|    103 | Suresh   | IT         | 55000.00 |          5 | Hyderabad     |   30 |
+|    104 | Anil     | Sales      | 35000.00 |          1 | Chennai       |   23 |
+|    105 | Priya    | Finance    | 60000.00 |          6 | Bangalore     |   32 |
+|    106 | Sneha    | IT         | 50000.00 |          4 | Vizag         |   28 |
+|    107 | Rahul    | HR         | 42000.00 |          2 | Hyderabad     |   25 |
+|    108 | Arjun    | Sales      | 38000.00 |          3 | Chennai       |   26 |
+|    109 | Divya    | Finance    | 65000.00 |          7 | Bangalore     |   34 |
+|    110 | Manoj    | IT         | 70000.00 |          8 | Hyderabad     |   35 |
+|    111 | Gautham  | IT         | 59500.00 |          1 | Visakhapatnam |   22 |
+|    112 | SHALINI  | HR         | 39500.00 |          1 | Hyderabad     |   22 |
++--------+----------+------------+----------+------------+---------------+------+
+12 rows in set (0.00 sec)
+
+mysql> delimiter //
+mysql> create trigger before_salupdate
+    -> before update
+    -> on employees
+    -> for each row
+    -> begin
+    ->     if new.salary < old.salary then
+    ->          signal sqlstate '45000'
+    ->          set message_text = 'Salary cannot be reduced'
+    ->     end if ;
+    -> end //
+ERROR 1064 (42000): You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'end if ;
+end' at line 9
+mysql> create trigger before_salupdate
+    -> before update
+    -> on employees
+    -> for each row
+    -> begin
+    ->     if new.salary < old.salary then
+    ->          signal sqlstate '45000'
+    ->          set message_text = 'Salary cannot be reduced';
+    ->     end if ;
+    -> end //
+Query OK, 0 rows affected (0.06 sec)
+
+mysql> update employees set salary = 3000 where emp_id = 101;
+    -> ^C
+mysql> update employees set salary = 3000 where emp_id = 101;
+    -> ^C
+mysql> delimiter ;
+mysql> update employees set salary = 3000 where emp_id = 101;
+ERROR 1644 (45000): Salary cannot be reduced
+mysql> update employees set salary = 70000 where emp_id = 101;
+Query OK, 1 row affected (0.05 sec)
+Rows matched: 1  Changed: 1  Warnings: 0
+
+mysql> select * from employees;
++--------+----------+------------+----------+------------+---------------+------+
+| emp_id | emp_name | department | salary   | experience | city          | age  |
++--------+----------+------------+----------+------------+---------------+------+
+|    101 | Ravi     | IT         | 70000.00 |          2 | Hyderabad     |   24 |
+|    102 | Kiran    | HR         | 40000.00 |          3 | Vijayawada    |   27 |
+|    103 | Suresh   | IT         | 55000.00 |          5 | Hyderabad     |   30 |
+|    104 | Anil     | Sales      | 35000.00 |          1 | Chennai       |   23 |
+|    105 | Priya    | Finance    | 60000.00 |          6 | Bangalore     |   32 |
+|    106 | Sneha    | IT         | 50000.00 |          4 | Vizag         |   28 |
+|    107 | Rahul    | HR         | 42000.00 |          2 | Hyderabad     |   25 |
+|    108 | Arjun    | Sales      | 38000.00 |          3 | Chennai       |   26 |
+|    109 | Divya    | Finance    | 65000.00 |          7 | Bangalore     |   34 |
+|    110 | Manoj    | IT         | 70000.00 |          8 | Hyderabad     |   35 |
+|    111 | Gautham  | IT         | 59500.00 |          1 | Visakhapatnam |   22 |
+|    112 | SHALINI  | HR         | 39500.00 |          1 | Hyderabad     |   22 |
++--------+----------+------------+----------+------------+---------------+------+
+12 rows in set (0.00 sec)
+
+mysql> delimiter //
+mysql> create trigger before_delete
+    -> before delete on employees
+    -> for each row
+    -> begin
+    ->     if old.department = 'IT'
+    ->     then
+    ->          signal sqlstate '45000'
+    ->          set message_text = 'We can't delete records if the department is IT'
+    '>     end if;
+    '> end //
+    '> ^C
+mysql> create trigger before_delete
+    -> before delete on employees
+    -> for each row
+    -> begin
+    ->     if old.department = 'IT' then
+    ->          signal sqlstate '45000'
+    ->          set message_text = 'We can't delete records if the department is IT'
+    '>
+    '> ^C
+mysql> create trigger before_delete
+    -> before delete on employees
+    -> for each row
+    -> begin
+    ->     if old.department = 'IT'
+    ->     then ^C
+mysql> create trigger before_delete
+    -> before delete on employees
+    -> for each row
+    -> begin
+    ->     if old.department = 'IT' then
+    ->          signal sqlstate '45000'
+    ->          set message_text = 'We can't delete records if the department is IT';
+    '>     end if ;
+    '> end //
+    '> ^C
+mysql> DELIMITER //
+mysql>
+mysql> CREATE TRIGGER before_delete
+    -> BEFORE DELETE ON employees
+    -> FOR EACH ROW
+    -> BEGIN
+    ->     IF OLD.department = 'IT' THEN
+    ->          SIGNAL SQLSTATE '45000'
+    ->          SET MESSAGE_TEXT = "We can't delete records if the department is IT";
+    ->     END IF;
+    -> END //
+Query OK, 0 rows affected (0.05 sec)
+
+mysql>
+mysql> DELIMITER ;
+mysql> delete from employees where emp_id = 101;
+ERROR 1644 (45000): We can't delete records if the department is IT
+mysql> delete from employees where emp_id = 111;
+ERROR 1644 (45000): We can't delete records if the department is IT
+mysql> delete from employees where emp_id = 112;
+Query OK, 1 row affected (0.02 sec)
+
+mysql> select * from employees;
++--------+----------+------------+----------+------------+---------------+------+
+| emp_id | emp_name | department | salary   | experience | city          | age  |
++--------+----------+------------+----------+------------+---------------+------+
+|    101 | Ravi     | IT         | 70000.00 |          2 | Hyderabad     |   24 |
+|    102 | Kiran    | HR         | 40000.00 |          3 | Vijayawada    |   27 |
+|    103 | Suresh   | IT         | 55000.00 |          5 | Hyderabad     |   30 |
+|    104 | Anil     | Sales      | 35000.00 |          1 | Chennai       |   23 |
+|    105 | Priya    | Finance    | 60000.00 |          6 | Bangalore     |   32 |
+|    106 | Sneha    | IT         | 50000.00 |          4 | Vizag         |   28 |
+|    107 | Rahul    | HR         | 42000.00 |          2 | Hyderabad     |   25 |
+|    108 | Arjun    | Sales      | 38000.00 |          3 | Chennai       |   26 |
+|    109 | Divya    | Finance    | 65000.00 |          7 | Bangalore     |   34 |
+|    110 | Manoj    | IT         | 70000.00 |          8 | Hyderabad     |   35 |
+|    111 | Gautham  | IT         | 59500.00 |          1 | Visakhapatnam |   22 |
++--------+----------+------------+----------+------------+---------------+------+
+11 rows in set (0.00 sec)
+
+mysql> CREATE TABLE Employee_Audit(
+    ->     audit_id INT AUTO_INCREMENT PRIMARY KEY,
+    ->     emp_id INT,
+    ->     action_type VARCHAR(20),
+    ->     old_salary DECIMAL(10,2),
+    ->     new_salary DECIMAL(10,2),
+    ->     action_time DATETIME
+    -> );
+Query OK, 0 rows affected (0.09 sec)
+
+mysql> delimiter //
+mysql> create trigger afterin
+    -> after insert on employees
+    -> for each row
+    -> begin
+    ->     insert into employee_audit
+    ->     (emp_id,action_type,new_salary,action_time)
+    ->     values
+    ->     (new.emp_id,'INSERT',new.salary,now());
+    -> end //
+Query OK, 0 rows affected (0.05 sec)
+
+mysql> delimiter ;
+mysql> insert into employees(112,'Shalini,'IT',45000,2,'Hyderabad');
+    '> ;
+    '> ^C
+mysql> delimiter ;
+mysql> insert into employees(112,'Shalini,'IT',45000,2,'Hyderabad');
+    '> ^C
+mysql> insert into employees(112,'Shalini,'IT',45000,2,'Hyderabad');
+    '> ^C
+mysql> INSERT INTO employees VALUES (112, 'Shalini', 'IT', 45000, 2, 'Hyderabad', 25);
+Query OK, 1 row affected (0.05 sec)
+
+mysql> select * from employees;
++--------+----------+------------+----------+------------+---------------+------+
+| emp_id | emp_name | department | salary   | experience | city          | age  |
++--------+----------+------------+----------+------------+---------------+------+
+|    101 | Ravi     | IT         | 70000.00 |          2 | Hyderabad     |   24 |
+|    102 | Kiran    | HR         | 40000.00 |          3 | Vijayawada    |   27 |
+|    103 | Suresh   | IT         | 55000.00 |          5 | Hyderabad     |   30 |
+|    104 | Anil     | Sales      | 35000.00 |          1 | Chennai       |   23 |
+|    105 | Priya    | Finance    | 60000.00 |          6 | Bangalore     |   32 |
+|    106 | Sneha    | IT         | 50000.00 |          4 | Vizag         |   28 |
+|    107 | Rahul    | HR         | 42000.00 |          2 | Hyderabad     |   25 |
+|    108 | Arjun    | Sales      | 38000.00 |          3 | Chennai       |   26 |
+|    109 | Divya    | Finance    | 65000.00 |          7 | Bangalore     |   34 |
+|    110 | Manoj    | IT         | 70000.00 |          8 | Hyderabad     |   35 |
+|    111 | Gautham  | IT         | 59500.00 |          1 | Visakhapatnam |   22 |
+|    112 | SHALINI  | IT         | 45000.00 |          2 | Hyderabad     |   25 |
++--------+----------+------------+----------+------------+---------------+------+
+12 rows in set (0.00 sec)
+
+mysql> select * from employee_audit;
++----------+--------+-------------+------------+------------+---------------------+
+| audit_id | emp_id | action_type | old_salary | new_salary | action_time         |
++----------+--------+-------------+------------+------------+---------------------+
+|        1 |    112 | INSERT      |       NULL |   45000.00 | 2026-09-15 10:19:43 |
++----------+--------+-------------+------------+------------+---------------------+
+1 row in set (0.00 sec)
+
+mysql> delimiter //
+mysql> create trigger afterupdate
+    -> after  update on employees
+    -> for each row
+    -> begin
+    ->     insert into employee_audit
+    ->     (emp_id,action_type,old_salary,new_salary,action_time)
+    ->     values
+    ->     (new.emp_id,'UPDATE',old.salary,new.salary,now());
+    -> end //
+Query OK, 0 rows affected (0.05 sec)
+
+mysql> update employees set salary = 65000 where emp_id = 105;
+    -> ^C
+mysql> delimiter ;
+mysql> update employees set salary = 65000 where emp_id = 105;
+Query OK, 1 row affected (0.05 sec)
+Rows matched: 1  Changed: 1  Warnings: 0
+
+mysql> select * from employees;
++--------+----------+------------+----------+------------+---------------+------+
+| emp_id | emp_name | department | salary   | experience | city          | age  |
++--------+----------+------------+----------+------------+---------------+------+
+|    101 | Ravi     | IT         | 70000.00 |          2 | Hyderabad     |   24 |
+|    102 | Kiran    | HR         | 40000.00 |          3 | Vijayawada    |   27 |
+|    103 | Suresh   | IT         | 55000.00 |          5 | Hyderabad     |   30 |
+|    104 | Anil     | Sales      | 35000.00 |          1 | Chennai       |   23 |
+|    105 | Priya    | Finance    | 65000.00 |          6 | Bangalore     |   32 |
+|    106 | Sneha    | IT         | 50000.00 |          4 | Vizag         |   28 |
+|    107 | Rahul    | HR         | 42000.00 |          2 | Hyderabad     |   25 |
+|    108 | Arjun    | Sales      | 38000.00 |          3 | Chennai       |   26 |
+|    109 | Divya    | Finance    | 65000.00 |          7 | Bangalore     |   34 |
+|    110 | Manoj    | IT         | 70000.00 |          8 | Hyderabad     |   35 |
+|    111 | Gautham  | IT         | 59500.00 |          1 | Visakhapatnam |   22 |
+|    112 | SHALINI  | IT         | 45000.00 |          2 | Hyderabad     |   25 |
++--------+----------+------------+----------+------------+---------------+------+
+12 rows in set (0.00 sec)
+
+mysql> select * from employee_audit;
++----------+--------+-------------+------------+------------+---------------------+
+| audit_id | emp_id | action_type | old_salary | new_salary | action_time         |
++----------+--------+-------------+------------+------------+---------------------+
+|        1 |    112 | INSERT      |       NULL |   45000.00 | 2026-09-15 10:19:43 |
+|        2 |    105 | UPDATE      |   60000.00 |   65000.00 | 2026-09-15 10:25:54 |
++----------+--------+-------------+------------+------------+---------------------+
+2 rows in set (0.00 sec)
+
+mysql> delimiter //
+mysql> CREATE TRIGGER afterdelete
+    -> AFTER DELETE ON employees
+    -> FOR EACH ROW
+    -> BEGIN
+    ->     INSERT INTO employee_audit (emp_id, action_type, old_salary, action_time)
+    ->     VALUES (OLD.emp_id, 'DELETE', OLD.salary, NOW());
+    -> END //
+Query OK, 0 rows affected (0.05 sec)
+
+mysql> delimiter ;
+mysql> delete from employees where emp_id =;
+ERROR 1064 (42000): You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '' at line 1
+mysql> delete from employees where emp_id = 104;
+Query OK, 1 row affected (0.05 sec)
+
+mysql> select * from employees;
++--------+----------+------------+----------+------------+---------------+------+
+| emp_id | emp_name | department | salary   | experience | city          | age  |
++--------+----------+------------+----------+------------+---------------+------+
+|    101 | Ravi     | IT         | 70000.00 |          2 | Hyderabad     |   24 |
+|    102 | Kiran    | HR         | 40000.00 |          3 | Vijayawada    |   27 |
+|    103 | Suresh   | IT         | 55000.00 |          5 | Hyderabad     |   30 |
+|    105 | Priya    | Finance    | 65000.00 |          6 | Bangalore     |   32 |
+|    106 | Sneha    | IT         | 50000.00 |          4 | Vizag         |   28 |
+|    107 | Rahul    | HR         | 42000.00 |          2 | Hyderabad     |   25 |
+|    108 | Arjun    | Sales      | 38000.00 |          3 | Chennai       |   26 |
+|    109 | Divya    | Finance    | 65000.00 |          7 | Bangalore     |   34 |
+|    110 | Manoj    | IT         | 70000.00 |          8 | Hyderabad     |   35 |
+|    111 | Gautham  | IT         | 59500.00 |          1 | Visakhapatnam |   22 |
+|    112 | SHALINI  | IT         | 45000.00 |          2 | Hyderabad     |   25 |
++--------+----------+------------+----------+------------+---------------+------+
+11 rows in set (0.00 sec)
+
+mysql> select * from employee_audit;
++----------+--------+-------------+------------+------------+---------------------+
+| audit_id | emp_id | action_type | old_salary | new_salary | action_time         |
++----------+--------+-------------+------------+------------+---------------------+
+|        1 |    112 | INSERT      |       NULL |   45000.00 | 2026-09-15 10:19:43 |
+|        2 |    105 | UPDATE      |   60000.00 |   65000.00 | 2026-09-15 10:25:54 |
+|        3 |    104 | DELETE      |   35000.00 |       NULL | 2026-09-15 10:30:23 |
++----------+--------+-------------+------------+------------+---------------------+
+3 rows in set (0.00 sec)
